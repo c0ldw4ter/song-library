@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Song Library</title>
+	</head>
+	<body>
+		<h1>Song Library</h1>
+
+		<form id="song-form">
+			<h2>Add / Update Song</h2>
+			<label for="group">Group:</label>
+			<input type="text" id="group" name="group" required />
+			<br />
+			<label for="song">Song:</label>
+			<input type="text" id="song" name="song" required />
+			<br />
+			<button type="submit">Save</button>
+		</form>
+
+		<h2>Delete Song</h2>
+		<form id="delete-form">
+			<label for="delete-song">Song ID:</label>
+			<input type="number" id="delete-song" name="id" required />
+			<br />
+			<button type="submit">Delete</button>
+		</form>
+
+		<h2>Song Library</h2>
+		<div id="song-list"></div>
+
+		<script>
+			const apiUrl = 'http://localhost:8080' // Бэкэнд адрес
+
+			// Fetch all songs and render
+			async function fetchSongs() {
+				const response = await fetch(`${apiUrl}/songs`)
+				const songs = await response.json()
+				const songList = document.getElementById('song-list')
+				songList.innerHTML = ''
+				songs.forEach(song => {
+					songList.innerHTML += `<p>${song.id}: ${song.group} - ${song.song}</p>`
+				})
+			}
+
+			// Add or update song
+			document
+				.getElementById('song-form')
+				.addEventListener('submit', async e => {
+					e.preventDefault()
+					const group = document.getElementById('group').value
+					const song = document.getElementById('song').value
+
+					await fetch(`${apiUrl}/songs`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ group, song }),
+					})
+
+					fetchSongs()
+				})
+
+			// Delete song
+			document
+				.getElementById('delete-form')
+				.addEventListener('submit', async e => {
+					e.preventDefault()
+					const id = document.getElementById('delete-song').value
+
+					await fetch(`${apiUrl}/songs/${id}`, {
+						method: 'DELETE',
+					})
+
+					fetchSongs()
+				})
+
+			// Load songs on page load
+			fetchSongs()
+		</script>
+	</body>
+</html>
