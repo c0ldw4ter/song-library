@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/broxgit/genius"
 	"github.com/gin-gonic/gin"
@@ -16,21 +17,18 @@ import (
 // Song represents a song record in the database
 type Song struct {
 	ID          int    `json:"id" db:"id"`
-	Group       string `json:"artist_names" db:"group_name"`
+	Group       string `json:"group" db:"group_name"`
 	Song        string `json:"song" db:"song_name"`
-	ReleaseDate string `json:"release_date_for_display" db:"release_date"`
-	Text        string `json:"lyrics_state" db:"text"`
-	Link        string `json:"relationships_index_url" db:"link"`
-	AlbumCover  string `json:"header_image_thumbnail_url" db:"album_cover_url"`
+	ReleaseDate string `json:"release_date" db:"release_date"`
+	Text        string `json:"text" db:"text"`
+	Link        string `json:"link" db:"link"`
+	AlbumCover  string `json:"album_cover_url" db:"album_cover_url"`
 }
-
-
 
 var db *sqlx.DB
 var geniusClient *genius.Client
 
 func main() {
-
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
@@ -44,10 +42,10 @@ func main() {
 	}
 
 	// Initialize Genius API client
-	apiToken := "8tYsABzGWIi1oV9KhipI1dyxgW5TUTCH8eQ286iSaH7r7IohyZfxVCHAmUjnmQ_I"
-	// if apiToken == "" {
-	// 	log.Fatal("GENIUS_API_TOKEN is not set in environment variables")
-	// }
+	apiToken := os.Getenv("GENIUS_API_TOKEN")
+	if apiToken == "" {
+		log.Fatal("GENIUS_API_TOKEN is not set in environment variables")
+	}
 	geniusClient = genius.NewClient(nil, apiToken)
 
 	// Create Gin router
@@ -99,16 +97,15 @@ func addOrUpdateSong(c *gin.Context) {
 	// Insert or update song in the database
 	_, err = db.Exec(
 		`INSERT INTO songs (group_name, song_name, release_date, text, link, album_cover_url)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 ON CONFLICT (group_name, song_name) DO UPDATE SET
-		 release_date = $3, text = $4, link = $5, album_cover_url = $6`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (group_name, song_name) DO UPDATE SET
+       release_date = $3, text = $4, link = $5, album_cover_url = $6`,
 		song.Group, song.Song, geniusData.ReleaseDate, geniusData.Text, geniusData.Link, geniusData.AlbumCover,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save song"})
 		return
 	}
-
 	c.Status(http.StatusOK)
 }
 
@@ -130,34 +127,27 @@ func fetchSongDetails(group, song string) (*Song, error) {
 	// Search using Genius API client
 	results, err := geniusClient.Search(query)
 	if err != nil {
-			return nil, fmt.Errorf("error searching Genius API: %v", err)
+		return nil, fmt.Errorf("error searching Genius API: %v", err)
 	}
 
 	// Check if results are available
 	if len(results.Response.Hits) == 0 {
-			return nil, fmt.Errorf("no results found for %s by %s", song, group)
+		return nil, fmt.Errorf("no results found for %s by %s", song, group)
 	}
 
-	// Loop through hits to find a suitable match
+	// Find the best match (relaxed comparison)
 	for _, hit := range results.Response.Hits {
-			result := hit.Result
-
-			// Ensure the necessary fields are available
-			if result.PrimaryArtist.Name != group {
-					continue // Даем предпочтение песням, которые соответствуют указанной группе
-			}
-			
-			if result.ReleaseDateForDisplay == "" || result.LyricsState == "" || result.URL == "" || result.HeaderImageURL == "" {
-					continue // Skip if any critical field is missing
-			}
-
-			// Return the matching song data
+		result := hit.Result
+		if strings.Contains(result.FullTitle, song) && strings.Contains(result.PrimaryArtist.Name, group) {
 			return &Song{
-					ReleaseDate: result.ReleaseDateForDisplay, // Use correct field for release date
-					Text:        result.LyricsState,            // Assuming you meant to store lyrics state; change as needed
-					Link:        result.URL,
-					AlbumCover:  result.HeaderImageURL,
+				ReleaseDate: result.ReleaseDate,
+				Text:        "Lyrics unavailable in this implementation",
+				Link:        result.URL,
+				AlbumCover:  result.HeaderImageURL,
 			}, nil
+		}
 	}
 	return nil, fmt.Errorf("no suitable match found for %s by %s", song, group)
 }
+
+
