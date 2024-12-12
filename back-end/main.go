@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/broxgit/genius"
 	"github.com/gin-gonic/gin"
@@ -14,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Song represents a song record in the database
+// Song представляет запись песни в базе данных
 type Song struct {
 	ID          int    `json:"id" db:"id"`
 	Group       string `json:"group" db:"group_name"`
@@ -29,48 +28,65 @@ var db *sqlx.DB
 var geniusClient *genius.Client
 
 func main() {
-	// Load environment variables
+	// Загружаем переменные окружения
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Connect to the database
+	// Подключаемся к базе данных
 	var err error
 	db, err = sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Initialize Genius API client
+	// Инициализируем клиент Genius API
 	apiToken := os.Getenv("GENIUS_API_TOKEN")
 	if apiToken == "" {
 		log.Fatal("GENIUS_API_TOKEN is not set in environment variables")
 	}
 	geniusClient = genius.NewClient(nil, apiToken)
 
-	// Create Gin router
+	// Создаем маршрутизатор Gin
 	r := gin.Default()
-	r.Static("/static", "../front-end")
 
-	// Routes
-	r.GET("/", rootHandler)
+	// Определяем маршруты
 	r.GET("/songs", getSongs)
 	r.POST("/songs", addOrUpdateSong)
 	r.DELETE("/songs/:id", deleteSong)
 
-	// Run server
+	// Запускаем сервер
 	r.Run(":8080")
 }
 
-// rootHandler serves the index.html file
-func rootHandler(c *gin.Context) {
-	c.File("../front-end/index.html")
-}
-
-// getSongs fetches all songs from the database
+// getSongs получает все песни из базы данных с пагинацией и фильтрацией
 func getSongs(c *gin.Context) {
 	var songs []Song
-	err := db.Select(&songs, "SELECT * FROM songs")
+	group := c.Query("group")
+	song := c.Query("song")
+	limit := c.Query("limit")
+	offset := c.Query("offset")
+
+	query := "SELECT * FROM songs WHERE TRUE"
+	args := []interface{}{}
+	if group != "" {
+		query += " AND group_name ILIKE $1"
+		args = append(args, "%"+group+"%")
+	}
+	if song != "" {
+		query += " AND song_name ILIKE $2"
+		args = append(args, "%"+song+"%")
+	}
+	if limit != "" {
+		query += " LIMIT $3"
+		args = append(args, limit)
+	}
+	if offset != "" {
+		query += " OFFSET $4"
+		args = append(args, offset)
+	}
+
+	err := db.Select(&songs, query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch songs"})
 		return
@@ -78,7 +94,7 @@ func getSongs(c *gin.Context) {
 	c.JSON(http.StatusOK, songs)
 }
 
-// addOrUpdateSong adds a new song or updates an existing one
+// addOrUpdateSong добавляет новую песню или обновляет существующую
 func addOrUpdateSong(c *gin.Context) {
 	var song Song
 	if err := c.BindJSON(&song); err != nil {
@@ -86,7 +102,7 @@ func addOrUpdateSong(c *gin.Context) {
 		return
 	}
 
-	// Call Genius API for additional information
+	// Запрашиваем дополнительную информацию о песне из Genius API
 	geniusData, err := fetchSongDetails(song.Group, song.Song)
 	if err != nil {
 		log.Printf("Error fetching song details: %v", err)
@@ -94,7 +110,7 @@ func addOrUpdateSong(c *gin.Context) {
 		return
 	}
 
-	// Insert or update song in the database
+	// Вставляем или обновляем песню в базе данных
 	_, err = db.Exec(
 		`INSERT INTO songs (group_name, song_name, release_date, text, link, album_cover_url)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -109,7 +125,7 @@ func addOrUpdateSong(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// deleteSong removes a song from the database by ID
+// deleteSong удаляет песню из базы данных по ID
 func deleteSong(c *gin.Context) {
 	id := c.Param("id")
 	_, err := db.Exec("DELETE FROM songs WHERE id = $1", id)
@@ -120,34 +136,37 @@ func deleteSong(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// fetchSongDetails fetches additional information about a song using Genius API
+// fetchSongDetails запрашивает дополнительную информацию о песне с использованием Genius API
 func fetchSongDetails(group, song string) (*Song, error) {
 	query := fmt.Sprintf("%s %s", group, song)
 
-	// Search using Genius API client
+	// Используем клиент Genius для поиска
 	results, err := geniusClient.Search(query)
 	if err != nil {
 		return nil, fmt.Errorf("error searching Genius API: %v", err)
 	}
 
-	// Check if results are available
+	// Проверяем, есть ли результаты
 	if len(results.Response.Hits) == 0 {
 		return nil, fmt.Errorf("no results found for %s by %s", song, group)
 	}
 
-	// Find the best match (relaxed comparison)
-	for _, hit := range results.Response.Hits {
-		result := hit.Result
-		if strings.Contains(result.FullTitle, song) && strings.Contains(result.PrimaryArtist.Name, group) {
-			return &Song{
-				ReleaseDate: result.ReleaseDate,
-				Text:        "Lyrics unavailable in this implementation",
-				Link:        result.URL,
-				AlbumCover:  result.HeaderImageURL,
-			}, nil
-		}
-	}
-	return nil, fmt.Errorf("no suitable match found for %s by %s", song, group)
+	// Берем первый результат
+	result := results.Response.Hits[0].Result
+	return &Song{
+		ReleaseDate: result.ReleaseDate,
+		Text:        "Lyrics unavailable in this implementation", // Здесь можно реализовать получение текста песни
+		Link:        result.URL,
+		AlbumCover:  result.HeaderImageURL,
+	}, nil
 }
+
+
+
+
+
+
+
+
 
 
