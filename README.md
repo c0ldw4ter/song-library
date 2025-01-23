@@ -1,4 +1,4 @@
-## song-library passed using Golang + DB(PostgreSQL)
+## song-library  using Golang + DB(PostgreSQL)
 
 ## To run
 
