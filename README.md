@@ -1,4 +1,4 @@
-## song-library  using Golang + DB(PostgreSQL)
+## song-library  using Golang + DB(PostgreSQL) + API Genius to fetch details for each song 
 
 ## To run
 
