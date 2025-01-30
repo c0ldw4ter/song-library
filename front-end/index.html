@@ -4,10 +4,49 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Song Library</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+			}
+			h1 {
+				color: #333;
+			}
+			form {
+				margin-bottom: 20px;
+			}
+			button {
+				padding: 10px 20px;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+			}
+			button:hover {
+				background-color: #0056b3;
+			}
+			#song-list,
+			#song-details {
+				margin-top: 20px;
+				padding: 10px;
+				border: 1px solid #ccc;
+				background-color: #f9f9f9;
+			}
+			/* Выделение песен при наведении */
+			#song-list p {
+				cursor: pointer;
+				transition: background-color 0.3s ease;
+			}
+			#song-list p:hover {
+				background-color: #e9ecef;
+			}
+		</style>
 	</head>
 	<body>
 		<h1>Song Library</h1>
 
+		<!-- Форма для добавления/обновления песни -->
 		<form id="song-form">
 			<h2>Add / Update Song</h2>
 			<label for="group">Group:</label>
@@ -19,63 +58,121 @@
 			<button type="submit">Save</button>
 		</form>
 
-		<h2>Delete Song</h2>
+		<!-- Форма для удаления песни -->
 		<form id="delete-form">
+			<h2>Delete Song</h2>
 			<label for="delete-song">Song ID:</label>
 			<input type="number" id="delete-song" name="id" required />
 			<br />
 			<button type="submit">Delete</button>
 		</form>
 
+		<!-- Список песен -->
 		<h2>Song Library</h2>
 		<div id="song-list"></div>
 
-		<script>
-			const apiUrl = 'http://localhost:8080' // Бэкэнд адрес
+		<!-- Детали песни -->
+		<div id="song-details" style="display: none">
+			<h2>Song Details</h2>
+			<p><strong>Group:</strong> <span id="details-group"></span></p>
+			<p><strong>Song:</strong> <span id="details-song"></span></p>
+			<p>
+				<strong>Release Date:</strong> <span id="details-release-date"></span>
+			</p>
+			<p>
+				<strong>Link:</strong>
+				<a id="details-link" href="#" target="_blank">Listen on Genius</a>
+			</p>
+			<p>
+				<strong>Album Cover:</strong>
+				<img
+					id="details-album-cover"
+					src=""
+					alt="Album Cover"
+					style="max-width: 200px"
+				/>
+			</p>
+			<h3>Lyrics</h3>
+			<pre id="details-lyrics"></pre>
+		</div>
 
-			// Fetch all songs and render
+		<script>
+			const apiUrl = 'http://localhost:8080' // Адрес back-end
+
+			// Получение списка песен
 			async function fetchSongs() {
-				const response = await fetch(`${apiUrl}/songs`)
-				const songs = await response.json()
-				const songList = document.getElementById('song-list')
-				songList.innerHTML = ''
-				songs.forEach(song => {
-					songList.innerHTML += `<p>${song.id}: ${song.group} - ${song.song}</p>`
-				})
+				try {
+					const response = await fetch(`${apiUrl}/songs`)
+					if (!response.ok) throw new Error('Failed to fetch songs')
+					const songs = await response.json()
+					const songList = document.getElementById('song-list')
+					songList.innerHTML = ''
+					songs.forEach(song => {
+						songList.innerHTML += `<p data-id="${song.id}">${song.id}: ${song.group} - ${song.song}</p>`
+					})
+				} catch (error) {
+					console.error('Error fetching songs:', error)
+				}
 			}
 
-			// Add or update song
+			// Добавление/обновление песни
 			document
 				.getElementById('song-form')
 				.addEventListener('submit', async e => {
 					e.preventDefault()
 					const group = document.getElementById('group').value
 					const song = document.getElementById('song').value
-
 					await fetch(`${apiUrl}/songs`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ group, song }),
 					})
-
 					fetchSongs()
 				})
 
-			// Delete song
+			// Удаление песни
 			document
 				.getElementById('delete-form')
 				.addEventListener('submit', async e => {
 					e.preventDefault()
 					const id = document.getElementById('delete-song').value
-
 					await fetch(`${apiUrl}/songs/${id}`, {
 						method: 'DELETE',
 					})
-
 					fetchSongs()
 				})
 
-			// Load songs on page load
+			// Просмотр деталей песни
+			document
+				.getElementById('song-list')
+				.addEventListener('click', async e => {
+					const songId = e.target.dataset.id
+					if (!songId) return
+
+					try {
+						const response = await fetch(`${apiUrl}/songs/${songId}`)
+						if (!response.ok) throw new Error('Failed to fetch song details')
+						const song = await response.json()
+
+						// Заполняем детали песни
+						document.getElementById('details-group').innerText = song.group
+						document.getElementById('details-song').innerText = song.song
+						document.getElementById('details-release-date').innerText =
+							song.release_date || 'N/A'
+						document.getElementById('details-link').href = song.link
+						document.getElementById('details-album-cover').src =
+							song.album_cover_url || ''
+						document.getElementById('details-lyrics').innerText =
+							song.text || 'Lyrics unavailable'
+
+						// Показываем блок с деталями
+						document.getElementById('song-details').style.display = 'block'
+					} catch (error) {
+						console.error('Error fetching song details:', error)
+					}
+				})
+
+			// Загрузка песен при старте
 			fetchSongs()
 		</script>
 	</body>

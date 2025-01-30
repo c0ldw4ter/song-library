@@ -1,9 +1,10 @@
 CREATE TABLE songs (
     id SERIAL PRIMARY KEY,
-    group_name VARCHAR(255) NOT NULL,
-    song_name VARCHAR(255) NOT NULL,
-    release_date VARCHAR(255),
+    group_name TEXT NOT NULL,
+    song_name TEXT NOT NULL,
+    release_date TEXT,
     text TEXT,
-    link VARCHAR(255),
-     album_cover_url VARCHAR(255)
+    link TEXT,
+    album_cover_url TEXT,
+    UNIQUE (group_name, song_name)
 );
