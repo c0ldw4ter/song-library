@@ -106,7 +106,7 @@ func addOrUpdateSong(c *gin.Context) {
     geniusData, err := fetchSongDetails(song.Group, song.Song)
     if err != nil {
         log.Printf("[ERROR] Error fetching song details: %v", err)
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Could not fetch song details"})
+        c.JSON(http.StatusNotFound, gin.H{"error": "No results found for the given song and group"})
         return
     }
 
