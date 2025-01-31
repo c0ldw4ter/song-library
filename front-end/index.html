@@ -122,12 +122,30 @@
 					e.preventDefault()
 					const group = document.getElementById('group').value
 					const song = document.getElementById('song').value
-					await fetch(`${apiUrl}/songs`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ group, song }),
-					})
-					fetchSongs()
+
+					try {
+						const response = await fetch(`${apiUrl}/songs`, {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ group, song }),
+						})
+
+						if (response.status === 404) {
+							alert(
+								'No results found for the given song and group. Please check your input.'
+							)
+							return
+						}
+
+						if (!response.ok) throw new Error('Failed to add/update song')
+
+						fetchSongs() // Обновляем список песен
+					} catch (error) {
+						console.error('Error adding/updating song:', error)
+						alert(
+							'An error occurred while processing your request. Please try again.'
+						)
+					}
 				})
 
 			// Удаление песни
