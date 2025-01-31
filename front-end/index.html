@@ -33,7 +33,7 @@
 				border: 1px solid #ccc;
 				background-color: #f9f9f9;
 			}
-			/* Выделение песен при наведении */
+			/* Выделение песен при наведении (Hightlight songs in hover)*/
 			#song-list p {
 				cursor: pointer;
 				transition: background-color 0.3s ease;
@@ -46,7 +46,7 @@
 	<body>
 		<h1>Song Library</h1>
 
-		<!-- Форма для добавления/обновления песни -->
+		<!-- Форма для добавления/обновления песни  (Add/update form for songs)-->
 		<form id="song-form">
 			<h2>Add / Update Song</h2>
 			<label for="group">Group:</label>
@@ -58,7 +58,7 @@
 			<button type="submit">Save</button>
 		</form>
 
-		<!-- Форма для удаления песни -->
+		<!-- Форма для удаления песни (Delet form for songs)-->
 		<form id="delete-form">
 			<h2>Delete Song</h2>
 			<label for="delete-song">Song ID:</label>
@@ -67,11 +67,11 @@
 			<button type="submit">Delete</button>
 		</form>
 
-		<!-- Список песен -->
+		<!-- Список песен (List of songs)-->
 		<h2>Song Library</h2>
 		<div id="song-list"></div>
 
-		<!-- Детали песни -->
+		<!-- Детали песни (Details of song)-->
 		<div id="song-details" style="display: none">
 			<h2>Song Details</h2>
 			<p><strong>Group:</strong> <span id="details-group"></span></p>
@@ -97,9 +97,9 @@
 		</div>
 
 		<script>
-			const apiUrl = 'http://localhost:8080' // Адрес back-end
+			const apiUrl = 'http://localhost:8080' // Адрес back-end (Back-end host)
 
-			// Получение списка песен
+			// Получение списка песен (Fetch songs from back-end)
 			async function fetchSongs() {
 				try {
 					const response = await fetch(`${apiUrl}/songs`)
@@ -115,7 +115,7 @@
 				}
 			}
 
-			// Добавление/обновление песни
+			// Добавление/обновление песни (Add/update songs)
 			document
 				.getElementById('song-form')
 				.addEventListener('submit', async e => {
@@ -139,7 +139,7 @@
 
 						if (!response.ok) throw new Error('Failed to add/update song')
 
-						fetchSongs() // Обновляем список песен
+						fetchSongs() // Обновляем список песен (Update list of songs)
 					} catch (error) {
 						console.error('Error adding/updating song:', error)
 						alert(
@@ -148,7 +148,7 @@
 					}
 				})
 
-			// Удаление песни
+			// Удаление песни (Delete songs)
 			document
 				.getElementById('delete-form')
 				.addEventListener('submit', async e => {
@@ -160,7 +160,7 @@
 					fetchSongs()
 				})
 
-			// Просмотр деталей песни
+			// Просмотр деталей песни (Details of song)
 			document
 				.getElementById('song-list')
 				.addEventListener('click', async e => {
@@ -172,7 +172,7 @@
 						if (!response.ok) throw new Error('Failed to fetch song details')
 						const song = await response.json()
 
-						// Заполняем детали песни
+						// Заполняем детали песни (Fill details of song)
 						document.getElementById('details-group').innerText = song.group
 						document.getElementById('details-song').innerText = song.song
 						document.getElementById('details-release-date').innerText =
@@ -183,14 +183,14 @@
 						document.getElementById('details-lyrics').innerText =
 							song.text || 'Lyrics unavailable'
 
-						// Показываем блок с деталями
+						// Показываем блок с деталями (Display block with song details)
 						document.getElementById('song-details').style.display = 'block'
 					} catch (error) {
 						console.error('Error fetching song details:', error)
 					}
 				})
 
-			// Загрузка песен при старте
+			// Загрузка песен при старте (Fetch songs when run)
 			fetchSongs()
 		</script>
 	</body>
