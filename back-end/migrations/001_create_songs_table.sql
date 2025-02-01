@@ -1,4 +1,4 @@
--- Создание таблицы songs (Songs table)
+-- Songs table(Создание таблицы songs)
 CREATE TABLE IF NOT EXISTS songs (
     id SERIAL PRIMARY KEY,
     group_name TEXT NOT NULL,
@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS songs (
     UNIQUE (group_name, song_name)
 );
 
--- Создание индексов для улучшения производительности (Create indexes for high performance)
+-- Create indexes for high performance(Создание индексов для улучшения производительности)
 CREATE INDEX IF NOT EXISTS idx_songs_group_name ON songs(group_name);
 CREATE INDEX IF NOT EXISTS idx_songs_song_name ON songs(song_name);
