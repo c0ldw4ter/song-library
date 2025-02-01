@@ -1,19 +1,24 @@
-# Переменные (vars)
+# Vars(Переменные)
+COMPOSE = docker-compose
 DB_URL ?= $(shell grep '^DATABASE_URL=' back-end/.env | sed 's/^DATABASE_URL=//')
-GO_RUN = go run $(shell pwd)/back-end/main.go
-MIGRATION_DIR = $(shell pwd)/back-end/migrations
+MIGRATION_DIR = back-end/migrations
 
-# Цели (targets)
-.PHONY: run migrate
+# Targets(Цели)
+.PHONY: run migrate down
 
-# Запуск проекта (run app)
-run: migrate
-	@echo "Starting the backend server..."
-	cd $(shell pwd)/back-end && $(GO_RUN)
+# Run all docker-contaners(Запуск всех контейнеров)
+run:
+	@echo "Starting all containers..."
+	$(COMPOSE) up --build
 
-# Применение миграций (apply migrations)
+# Manual apply migrations(Применение миграций (вручную))
 migrate:
-	@echo "Checking if migrations are needed..."
-	psql "$(DB_URL)" -f $(MIGRATION_DIR)/001_create_songs_table.sql || echo "Migrations skipped or already applied."
-	@echo "Migrations checked successfully."
+	@echo "Applying database migrations..."
+	docker exec -it backend_app psql "$(DB_URL)" -f $(MIGRATION_DIR)/001_create_songs_table.sql
+	@echo "Migrations applied successfully."
+
+# Stop all docker-containers(Остановка всех контейнеров)
+down:
+	@echo "Stopping all containers..."
+	$(COMPOSE) down
 
